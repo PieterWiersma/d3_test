@@ -1,0 +1,438 @@
+<html>
+<head>
+<style type="text/css">
+
+.axis path,
+.axis line {
+		fill: none;
+		stroke: olive;
+		stroke-width: 1px;
+		stroke-dasharray: 5,5;
+		shape-rendering: crispEdges;
+		}
+.axis text {
+		font-family: sans serif;
+		font-size: 11px;
+		}
+
+.text {
+		font-family: sans serif;
+		font-size: 12px;
+		font-family: LFT Etica;
+		font-color: grey;
+		}
+
+.xLine {
+		stroke: black;
+		stroke-width:0.5;
+		}
+		
+.xLineInterval {
+		stroke: grey;
+		stroke-width:0.5;
+		stroke-dasharray: 1,2;
+		}
+		
+.xLineIntervalText {
+		font-size: 12px;
+		font-family: LFT Etica;
+		font-color: grey;
+		}
+		
+.infobox {
+		position: absolute;
+		width: 100px;
+		height: 12px;
+		padding: 10px;
+		padding-top: 1px;
+		background-color: rgba(255,255,255,.75);
+		display: none;
+		} 
+		
+.arrow {
+		position: absolute;
+		left: 1050px;
+		top: 320px;
+		} 
+
+p	{
+		font-size: 11px;
+		font-family: arial;
+		font-color: black;
+		font-weight: bold;
+}
+
+    #canvas{
+		background-color: yellow;
+		position: absolute;
+		left: 0;
+		}
+
+</style>
+
+<script src="d3_v3_min.js"></script>
+
+<script language="javascript">
+
+//MAX op set() dynamisch //MIN op handmatig //
+
+
+
+//metrische variabelen
+var h = 400;
+var w = 1000;
+var set = 0;
+											
+
+//eerste teken check
+var firstLoad = 0;
+
+var myMouseMoveFunction = function(event) {
+		var x = d3.mouse(this)[0];
+		var y = d3.mouse(this)[1];
+
+		var infobox = d3.select(".infobox");
+		infobox.style("left", x  + 15 + "px" );
+		infobox.style("top", y  + "px");
+} 
+
+function getData (csv){ //  2. pull down menu  
+
+			var color;
+			var columsLength = Object.keys( csv[0] ).length;
+			
+			var data = [];
+			for (var i = 0; i < csv.length; i++){//TIJDELIJK
+								if (csv[i].name == "appels") color =  "#DC143C"; 
+										else if (csv[i].name == "bananen") color =  "#9370DB";
+										else color = "#CCCC66";
+			data[i] = { 
+						color: color,  //tijdelijk
+						group: csv[i].group,
+						name: csv[i].name,
+					}
+					data[i].number = [];
+					for (var j = 1; j < columsLength - 1; j++){
+					data[i].number[j-1] = +csv[i][j]
+					}
+			}return data;
+}	
+
+function dataLegenda(dataset, set, settings){
+var legenda = [];
+var legendaTeller = 1;
+var dubbelCheck = 0;
+
+				for(var i = 0; i < dataset.length; i++){
+								if (i == 0){dubbelCheck = 1;
+											legenda[0]  = [dataset[0].name, dataset[0].color]
+											}
+								else { 
+										for(var j = 0; j < legenda.length; j++){
+										if (dataset[i].name == legenda[j][0]){ 
+										dubbelCheck = 1;
+											 }}};
+											 
+								if (dubbelCheck == 0){
+								legenda[legendaTeller] = [dataset[i].name, dataset[i].color];
+								legendaTeller++;
+								}
+								else dubbelCheck = 0;
+				}
+return legenda;
+}
+
+
+
+
+function drawLegenda(dataset, set, settings){
+
+var legenda = dataLegenda(dataset, set, settings);
+
+		for(var i = 0; i < legenda.length; i++){
+		d3.select("body").append("div")
+		.attr("style", "width: 13px; height: 13px; position: absolute; background-color: " + legenda[i][1] + "; " +  "left: " +  (w + 50) + "px; " + "top: " +  (40 + i * 15)  + ";");
+
+		d3.select("body").append("div")
+		.attr("style", "height: 13px; position: absolute; left: " +  (w + 70) + "px; " + "top: " + (40 + i * 15) + ";")
+		.text(legenda[i][0]).attr("class", "text")
+		.on("mouseenter", function(){
+				for (var j = 0; j < dataset.length; j++){
+					if (dataset[j].name != d3.select(this).text()){
+					d3.select("#histogram" + j).attr("fill-opacity", 0.3);
+					}
+		}})
+		.on("mouseleave", function(){
+				for (var j = 0; j < dataset.length; j++){
+					d3.select("#histogram" + j).attr("fill-opacity", 1);
+		}})		
+		;
+		}
+}
+
+
+
+
+
+
+
+
+
+function changeInfoBox(i, set){
+
+d3.select(".infobox").text(dataset[i].number[set] + " " + dataset[i].name).style("display", "block");
+}
+
+function drawData(dataset, settings, set){
+							
+
+									var groupDistance = 0;
+									
+							//later functie van maken
+							svg.selectAll("rect").data(dataset).enter().append("rect")
+								.attr("id", function(d,i){return "histogram" + i;} )
+								.attr("class", "Histogram")
+								.attr("width", function(){
+									return settings.breedte;
+										})
+								.attr("height", function(d){
+									return 0;
+											})
+								.attr("x", function(d,i){
+									if (i == 0) groupDistance = groupDistance + (settings.breedte / 2);
+									else if(d.group != dataset[i-1].group) groupDistance = groupDistance + (settings.breedte / 2);
+									return (i * settings.breedte + (i*2) + settings.xPaddingL + groupDistance);
+									;	
+										})
+								.attr("y", function(d){ 
+									if (firstLoad == 0) {
+									return h-settings.yPadding;}
+									else {if(set != 0 )return yScale(d.number[set-1]);
+											else return yScale(d.number[3]);
+											}
+									})
+								.attr("fill", function(d){
+								return d.color;
+								})
+								.on('mousemove', myMouseMoveFunction)
+								.on("mouseout", function(d){
+								d3.select(this).attr("fill-opacity", 1);
+								d3.select(".infobox").style("display", "none");
+								});
+								
+
+								
+}
+
+//schalingsfunctie min kan op 0 of minimale waarde
+function yScaling(dataset, set, settings){
+var min = d3.min(dataset, function(d){return d.number[set];});
+var max = d3.max(dataset, function(d){return d.number[set];});
+		if (min <= 100) min = 0;
+		else if (min <= 1000 && min > 100) min = Math.round((min - (min/10))/100)  * 100;
+		else  min = Math.round((min - (min/10))/1000) * 1000;
+
+					return	d3.scale.linear()
+							 .domain([min, max ])
+							 .range([0, h - settings.yPadding]);
+							}
+
+
+							
+// axen tekenen, nieuwe variabele							
+function axen(dataset, set, settings) {
+
+// dynamische axen !!!! Transitie op axen (dat kan nu want het zijn altijd 5 lijnen)
+
+		
+		
+		var max = d3.max(dataset, function(d){return d.number[set]});
+		
+		var min = d3.min(dataset, function(d){return d.number[set]});
+		
+		if (min <= 100) min = 0;
+		else if (min <= 1000 && min > 100) min = Math.round((min - (min/10))/100)  * 100;
+		else  min = Math.round((min - (min/10))/1000) * 1000;
+
+		//Schalen juist !!moet nog met andere min kunnen omgaan
+		var correctie = 0;
+		var ticks = 5; //6 betekent 4 + 1 erboven en 1 beneden
+		//DELER
+		if (max-min > 1000) var deler = Math.round(((max-min)/ ticks) * 0.01) * 100;
+		else if (max-min  > 100) var deler = Math.round(((max-min)/ ticks) * 0.1) * 10; 
+		else if (max-min  > 50) var deler = Math.round(((max-min) / ticks)/5) * 5;
+		else if (max-min  > 10) var deler = Math.round(((max-min) / ticks)/2) * 2;
+		else if (max-min  < 2) var deler = Math.round(((max-min) / ticks) * 100) / 100;
+		else if (max-min  < 10) var deler = Math.round(((max-min)/ ticks));
+		else var deler = Math.round(((max-min) / ticks) / 10) * 10;
+		
+		
+		var xAxen = [];
+		
+		for (var i = 1; i < ticks; i++){
+		xAxen[i-1] = [];
+		xAxen[i-1][0] = (h-settings.yPadding) - (((h-settings.yPadding) * (deler/(max-min))) * i);
+		xAxen[i-1][1] = min + deler * i;
+		}
+
+		if (firstLoad == 1) { 
+		svg.selectAll(".xLineInterval").data(xAxen)
+		.transition().duration(1000).delay(0)
+								.attr("y1", function(d, i, set){return  d[0]  ;})
+								.attr("y2", function(d, i, set){return d[0] ;});}
+		else {
+		svg.selectAll("line").data(xAxen).enter().append("line").attr("id", "axisen")
+								.attr("x1", settings.xPaddingL )
+								.attr("x2", (w ))
+								.attr("y1", function(d, i, set){return  d[0] ;})
+								.attr("y2", function(d, i, set){return d[0];})
+								.attr("class", "xLineInterval");}
+		
+		if (firstLoad == 1) {		
+		svg.selectAll("text").data(xAxen)
+					.text(function(d){return d[1];})
+								.attr("x", settings.xPaddingL - 40)
+								.transition().duration(1000).delay(0)
+								.attr("y", function(d, i, set){return d[0] + 7;});}
+		else {		
+		svg.selectAll("text").data(xAxen).enter().append("text")
+					.text(function(d){return d[1];})
+					.attr("class", "xLineIntervalText")
+								.attr("x", settings.xPaddingL - 40)
+								.attr("y", function(d, i, set){return d[0] + 7;});}
+	
+		//Statische X-as
+	if (firstLoad != 1) {
+		var xAxis = svg.append("line").attr("id", "axisen")
+						.attr("x1", settings.xPaddingL )
+						.attr("x2", (w  ))
+						.attr("y1", h - settings.yPadding)
+						.attr("y2", h - settings.yPadding)
+						.attr("class", "xLine");}
+		
+		//group
+	
+		if (firstLoad != 1) {
+	var x = 0;
+	var datasetLength = dataset.length
+	var groupDistance = (settings.breedte / 2);
+		for(var i = 0; i < datasetLength; i++){
+							x++;
+							if (x == datasetLength) x = 0;
+							
+		if (dataset[i].group != dataset[x].group){
+
+			svg.append("text")
+				.text(dataset[i].group)
+				.attr("id", "axisen")
+				.attr("x", function(){ 
+				groupDistance = groupDistance + (settings.breedte / 2);
+				return ((i-1) * settings.breedte + ((i-1)*2) + settings.xPaddingL + groupDistance)
+				})
+				.attr("y", h - settings.yPadding / 2)
+				.attr("class", "xLineIntervalText");}
+						}}
+					}
+		
+		
+		
+		
+		
+		
+		
+		
+		//data is al getekend, hier wordt hoogte met een transformatie gezet
+function swap(dataset, set, settings) {
+				
+				var yScale = yScaling(dataset, set, settings);
+				axen(dataset, set, settings);
+						drawData(dataset, settings, set);
+	
+
+				for (var i = 0; i < dataset.length; i++){
+					d3.select("#histogram" + i)
+					.transition().duration(100).delay(i*100)
+					.attr("height", function(){
+					return yScale(dataset[i].number[set], set, settings);})					
+					.attr("y", function(){
+					return h - yScale(dataset[i].number[set], set) - settings.yPadding;});
+					
+					
+	}			
+				d3.selectAll(".Histogram")
+								.on("mouseover", function(d, i){
+								d3.select(this).attr("fill-opacity", 0.6);
+								changeInfoBox(i, set);
+								});
+				}
+	
+</script>
+</head>
+
+<body>
+
+<!--
+  _____   _                        _               
+ | ____| | |  ___    ___  __   __ (_)   ___   _ __ 
+ |  _|   | | / __|  / _ \ \ \ / / | |  / _ \ | '__|
+ | |___  | | \__ \ |  __/  \ V /  | | |  __/ | |   
+ |_____| |_| |___/  \___|   \_/   |_|  \___| |_|   
+                                                  
+ -->
+
+<div class="infobox">
+<p>Here is where we will say something.</p>
+</div> 
+
+<script language="javascript">
+var svg = d3.select("body").append("svg").attr("width", w).attr("height", h);
+var settings;
+var dataset;
+var csv2;
+var firstLoad;
+
+d3.csv("dataset.csv", function(csv) {
+											
+										settings = {
+											xPaddingL: 100, 
+											xPaddingR: 100, 
+											yPadding: 40
+											};
+											settings.breedte = (w - settings.xPaddingL - settings.xPaddingR) / (csv.length + csv.length/4);
+									
+var columsLength = Object.keys( csv[0] ).length;											
+d3.select("body").append("div").attr("class", "arrow").append("img").attr("src", "arrow.png").attr("width", 50).attr("height", 50)
+					.on("mouseenter", function(){d3.select(this).attr("src", "arrow2.png")})
+					.on("mouseleave", function(){d3.select(this).attr("src", "arrow.png")})
+					.on("click", function(){
+					if (set < columsLength - 3) set++;
+					else set = 0;
+					swap(dataset, set, settings);
+					});
+					
+
+dataset = getData(csv);
+
+//settings.breedte en Xpadding
+
+		var lijnenTekenen = 0;
+		
+		//schaling en oproepen data
+		
+		
+		console.log(dataset);	
+		 drawLegenda(dataset, set, settings);
+
+		swap(dataset, set, settings);
+		firstLoad = 1;
+
+		
+
+});
+
+
+</script>
+
+
+
+</body>
